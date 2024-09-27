@@ -1,31 +1,41 @@
 import utils
 import random
+from collections import defaultdict
+from functools import cache
 
 
-def path_cost(graph, path):
+@cache
+def path_cost(path):
+    global graph
+    
     cost = 0
     for i in range(len(path) - 1):
         cost += graph[path[i]][path[i + 1]]
-    
-    cost += graph[path[-1]][path[0]]
     return cost
 
 
-def update_pheromones(pheromones, path, cost, rho):
-    for i in range(len(path) - 1):
-        pheromones[path[i]][path[i + 1]] = (1 - rho) * pheromones[path[i]][path[i + 1]] + 1 / cost
-        pheromones[path[i + 1]][path[i]] = (1 - rho) * pheromones[path[i + 1]][path[i]] + 1 / cost
+def update_pheromones(pheromones, paths, rho):
+    global graph
+
+    pheromone_delta = defaultdict(int)
+    for path in paths:
+        cost = path_cost(tuple(path))
+        for i in range(len(path) - 1):
+            pheromone_delta[(path[i], path[i + 1])] += 1 / cost
     
-    pheromones[path[-1]][path[0]] = (1 - rho) * pheromones[path[-1]][path[0]] + 1 / cost
-    pheromones[path[0]][path[-1]] = (1 - rho) * pheromones[path[0]][path[-1]] + 1 / cost
+    for i in range(len(pheromones)):
+        for j in range(len(pheromones)):
+            pheromones[i][j] = (1 - rho) * pheromones[i][j] + pheromone_delta[(i, j)]
 
 
-def pick_next(graph, pheromones, visited, current, alpha, beta):
+def pick_next(pheromones, visited, current, alpha, beta):
+    global graph
+
     unvisited = [i for i in range(len(graph)) if not visited[i]]
-    probs = [0 for _ in range(len(graph))]
+    probs = [0] * len(graph)
     
     for i in unvisited:
-        probs[i] = (pheromones[current][i] ** alpha) * ((1 / graph[current][i]) ** beta)
+        probs[i] = (pheromones[current][i] ** alpha) / (graph[current][i] ** beta)
     
     total = sum(probs)
     probs = [p / total for p in probs]
@@ -39,36 +49,61 @@ def pick_next(graph, pheromones, visited, current, alpha, beta):
     return unvisited[-1]
 
 
-def tsp(graph, ants, alpha, beta, rho, limit=100):
-    # TODO: store best path, run through logic again, am i supposed to update pheromonoes after each ant?
+def construct_path(pheromones, alpha, beta):
+    global graph
+
+    path = [random.randint(0, len(graph) - 1)]
+    visited = [False] * len(graph)
+    visited[path[0]] = True
+    
+    for _ in range(len(graph) - 1):
+        current = path[-1]
+        next_city = pick_next(pheromones, visited, current, alpha, beta)
+        path.append(next_city)
+        visited[next_city] = True
+
+    path.append(path[0])
+
+    return path
+
+
+def tsp(ants, alpha, beta, rho, limit=3):
+    global graph
+
     pheromones = [[random.random() for _ in range(len(graph))] for _ in range(len(graph))]
+    overall_best_path = []
+    overall_best_cost = float('inf')
     
     for t in range(limit):
+        paths = []
+        curr_best_path = []
+        curr_best_cost = float('inf')
+
         for _ in range(ants):
-            path = [random.randint(0, len(graph) - 1)]
-            visited = [False for _ in range(len(graph))]
-            visited[path[0]] = True
-            
-            for _ in range(len(graph) - 1):
-                current = path[-1]
-                next = pick_next(graph, pheromones, visited, current, alpha, beta)
-                path.append(next)
-                visited[next] = True
-            
-            cost = path_cost(graph, path)
-            update_pheromones(pheromones, path, cost, rho)
+            path = construct_path(pheromones, alpha, beta)
+            paths.append(path)
+            if path_cost(tuple(path)) < curr_best_cost:
+                curr_best_cost = path_cost(tuple(path))
+                curr_best_path = path
+
+        if curr_best_cost < overall_best_cost:
+            overall_best_cost = curr_best_cost
+            overall_best_path = curr_best_path
+
+        update_pheromones(pheromones, paths, rho)
         
         print('Iteration', t + 1)
-        print('Best path:', path)
-        print('Cost:', cost)
+        print('Best Path in Iteration:', curr_best_path)
+        print('Best Cost in Iteration:', curr_best_cost)
+        print('Best Cost Overall:', overall_best_cost)
         print()
         
 
 if __name__ == '__main__':
-    graph = utils.construct_graph('data/5.txt')
+    graph = utils.construct_graph('data/19.txt')
     
-    ants = 10
+    ants = 1000
     alpha = 1
-    beta = 2
-    rho = 0.1
-    tsp(graph, ants, alpha, beta, rho)
+    beta = 3
+    rho = 0.4
+    tsp(ants, alpha, beta, rho)
