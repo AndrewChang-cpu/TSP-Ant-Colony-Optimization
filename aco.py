@@ -67,7 +67,7 @@ def construct_path(pheromones, alpha, beta):
     return path
 
 
-def tsp(ants, alpha, beta, rho, limit=3):
+def tsp(ants, alpha, beta, rho, limit=100):
     global graph
 
     pheromones = [[random.random() for _ in range(len(graph))] for _ in range(len(graph))]
@@ -100,10 +100,10 @@ def tsp(ants, alpha, beta, rho, limit=3):
         
 
 if __name__ == '__main__':
-    graph = utils.construct_graph('data/19.txt')
+    graph = utils.construct_graph('data/2085.txt')
     
-    ants = 1000
+    ants = 100
     alpha = 1
     beta = 3
-    rho = 0.4
-    tsp(ants, alpha, beta, rho)
+    rho = 0.5
+    tsp(ants, alpha, beta, rho, limit=500)
