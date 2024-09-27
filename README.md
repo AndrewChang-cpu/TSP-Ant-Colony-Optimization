@@ -13,4 +13,4 @@ Desirability – ηij​ is a heuristic for how inherently desirable an edge is 
 
 The ant factors in pheromones and desirability when randomly choosing the next edge using the probabilities given by this formula:
 
-![alt text](image.png)
+![alt text](images/probability.png)
