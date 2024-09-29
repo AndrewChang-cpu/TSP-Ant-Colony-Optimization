@@ -1,10 +1,11 @@
 import utils
 import random
 from collections import defaultdict
-from functools import cache
+from functools import lru_cache
+import optuna
 
 
-@cache
+@lru_cache(maxsize=None)
 def path_cost(path):
     global graph
     
@@ -38,6 +39,8 @@ def pick_next(pheromones, visited, current, alpha, beta):
         probs[i] = (pheromones[current][i] ** alpha) / (graph[current][i] ** beta)
     
     total = sum(probs)
+    if total == 0:
+        return unvisited[-1]
     probs = [p / total for p in probs]
     
     r = random.random()
@@ -67,7 +70,7 @@ def construct_path(pheromones, alpha, beta):
     return path
 
 
-def tsp(ants, alpha, beta, rho, limit=100):
+def tsp(ants, alpha, beta, rho, limit=150):
     global graph
 
     pheromones = [[random.random() for _ in range(len(graph))] for _ in range(len(graph))]
@@ -81,7 +84,6 @@ def tsp(ants, alpha, beta, rho, limit=100):
 
         for _ in range(ants):
             path = construct_path(pheromones, alpha, beta)
-            paths.append(path)
             if path_cost(tuple(path)) < curr_best_cost:
                 curr_best_cost = path_cost(tuple(path))
                 curr_best_path = path
@@ -92,12 +94,26 @@ def tsp(ants, alpha, beta, rho, limit=100):
 
         update_pheromones(pheromones, paths, rho)
         
-        print('Iteration', t + 1)
-        print('Best Path in Iteration:', curr_best_path)
-        print('Best Cost in Iteration:', curr_best_cost)
-        print('Best Cost Overall:', overall_best_cost)
-        print()
+    #     print('Iteration', t + 1)
+    #     print('Best Path in Iteration:', curr_best_path)
+    #     print('Best Cost in Iteration:', curr_best_cost)
+    #     print('Best Cost Overall:', overall_best_cost)
+    #     print()
         
+    # print('OVERALL BEST PATH FOUND:', overall_best_path)
+    # print('COST:', overall_best_cost)
+    return overall_best_cost
+
+
+def objective(trial):
+    ants = trial.suggest_int('ants', 1, 200)
+    alpha = trial.suggest_int('alpha', 1, 10)
+    beta = trial.suggest_int('beta', 1, 10)
+    rho = trial.suggest_float('rho', 0.1, 0.9)
+    limit = trial.suggest_int('limit', 1, 200)
+    
+    return tsp(ants, alpha, beta, rho, limit)
+
 
 if __name__ == '__main__':
     graph = utils.construct_graph('data/2085.txt')
@@ -106,4 +122,10 @@ if __name__ == '__main__':
     alpha = 1
     beta = 3
     rho = 0.5
-    tsp(ants, alpha, beta, rho, limit=500)
+    # tsp(ants, alpha, beta, rho, limit=100)
+    
+    study = optuna.create_study(direction='minimize', study_name='aco-tsp', storage='sqlite:///aco.db')
+    study.optimize(objective, n_trials=100)
+    
+    print("Best parameters: ", study.best_params)
+    print("Best value: ", study.best_value)
