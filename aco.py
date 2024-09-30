@@ -3,6 +3,7 @@ import random
 from collections import defaultdict
 from functools import lru_cache
 import optuna
+import time
 
 
 @lru_cache(maxsize=None)
@@ -100,8 +101,8 @@ def tsp(ants, alpha, beta, rho, limit=150):
     #     print('Best Cost Overall:', overall_best_cost)
     #     print()
         
-    # print('OVERALL BEST PATH FOUND:', overall_best_path)
-    # print('COST:', overall_best_cost)
+    print('OVERALL BEST PATH FOUND:', overall_best_path)
+    print('COST:', overall_best_cost)
     return overall_best_cost
 
 
@@ -116,16 +117,18 @@ def objective(trial):
 
 
 if __name__ == '__main__':
-    graph = utils.construct_graph('data/2085.txt')
+    graph = utils.construct_graph('data/19.txt')
     
-    ants = 100
-    alpha = 1
-    beta = 3
-    rho = 0.5
-    # tsp(ants, alpha, beta, rho, limit=100)
+    ants = 39
+    alpha = 7
+    beta = 9
+    rho = 0.25
+    limit = 250
+    start = time.time()
+    tsp(ants, alpha, beta, rho, limit)
+    print("Time taken: ", time.time() - start)
     
-    study = optuna.create_study(direction='minimize', study_name='aco-tsp', storage='sqlite:///aco.db')
-    study.optimize(objective, n_trials=100)
-    
-    print("Best parameters: ", study.best_params)
-    print("Best value: ", study.best_value)
+    # study = optuna.create_study(direction='minimize', study_name='aco-tsp', storage='sqlite:///aco.db')
+    # study.optimize(objective, n_trials=100)
+    # print("Best parameters: ", study.best_params)
+    # print("Best value: ", study.best_value)
